@@ -1,0 +1,110 @@
+shot_id,scene,slot,tier,description,elements,duration_target
+S01_01,1,1,B,"Cold open — the terraces before dawn — tight on Altiplano's face, holding the beat",ALTIPLANO;TERRACE;MIST,6
+S01_02,1,2,A,Cold open — the terraces before dawn — close on hands working the earth,ALTIPLANO;TERRACE;MIST,3
+S01_03,1,3,B,Cold open — the terraces before dawn — texture — dust lifting off dry stone,ALTIPLANO;TERRACE;MIST,4
+S01_04,1,4,C,Cold open — the terraces before dawn — insert — water finding the channel lip,ALTIPLANO;TERRACE;MIST,6
+S01_05,1,5,C,Cold open — the terraces before dawn — tracking behind Altiplano along the wall,ALTIPLANO;TERRACE;MIST,4
+S01_06,1,6,A,Cold open — the terraces before dawn — close on hands working the earth,ALTIPLANO;TERRACE;MIST,8
+S02_01,2,1,B,Nayra wakes in the stone house — close on hands working the earth,NAYRA;STONE_HOUSE;OIL_LAMP,6
+S02_02,2,2,B,Nayra wakes in the stone house — close on hands working the earth,NAYRA;STONE_HOUSE;OIL_LAMP,4
+S02_03,2,3,B,"Nayra wakes in the stone house — high wide, the village small in the frame",NAYRA;STONE_HOUSE;OIL_LAMP,4
+S02_04,2,4,C,"Nayra wakes in the stone house — medium on Nayra, wind moving the shawl",NAYRA;STONE_HOUSE;OIL_LAMP,8
+S02_05,2,5,B,Nayra wakes in the stone house — texture — dust lifting off dry stone,NAYRA;STONE_HOUSE;OIL_LAMP,5
+S02_06,2,6,B,Nayra wakes in the stone house — insert — coca leaves on wet cloth,NAYRA;STONE_HOUSE;OIL_LAMP,4
+S02_07,2,7,B,Nayra wakes in the stone house — over-shoulder toward the far ridge,NAYRA;STONE_HOUSE;OIL_LAMP,8
+S03_01,3,1,B,The water channel is dry — insert — water finding the channel lip,CHANNEL;NAYRA;DUST,5
+S03_02,3,2,A,"The water channel is dry — high wide, the village small in the frame",CHANNEL;NAYRA;DUST,5
+S03_03,3,3,C,"The water channel is dry — tight on Channel's face, holding the beat",CHANNEL;NAYRA;DUST,3
+S03_04,3,4,C,The water channel is dry — insert — coca leaves on wet cloth,CHANNEL;NAYRA;DUST,6
+S03_05,3,5,B,The water channel is dry — over-shoulder toward the far ridge,CHANNEL;NAYRA;DUST,5
+S04_01,4,1,C,"Village assembly at the plaza — two-shot, neither of them looking at the other",PLAZA;ELDERS;CROWD,5
+S04_02,4,2,B,"Village assembly at the plaza — high wide, the village small in the frame",PLAZA;ELDERS;CROWD,8
+S04_03,4,3,C,"Village assembly at the plaza — high wide, the village small in the frame",PLAZA;ELDERS;CROWD,4
+S04_04,4,4,B,"Village assembly at the plaza — medium on Plaza, wind moving the shawl",PLAZA;ELDERS;CROWD,8
+S04_05,4,5,B,Village assembly at the plaza — insert — coca leaves on wet cloth,PLAZA;ELDERS;CROWD,4
+S04_06,4,6,A,Village assembly at the plaza — close on hands working the earth,PLAZA;ELDERS;CROWD,4
+S04_07,4,7,B,"Village assembly at the plaza — wide establishing, low sun raking the terrace walls",PLAZA;ELDERS;CROWD,5
+S05_01,5,1,C,"Tupaq returns from the city — two-shot, neither of them looking at the other",TUPAQ;BUS;ROAD,3
+S05_02,5,2,C,Tupaq returns from the city — close on hands working the earth,TUPAQ;BUS;ROAD,3
+S05_03,5,3,C,Tupaq returns from the city — tracking behind Tupaq along the wall,TUPAQ;BUS;ROAD,6
+S05_04,5,4,C,Tupaq returns from the city — insert — water finding the channel lip,TUPAQ;BUS;ROAD,5
+S05_05,5,5,C,"Tupaq returns from the city — tight on Tupaq's face, holding the beat",TUPAQ;BUS;ROAD,5
+S06_01,6,1,C,Brother and sister argue in the kitchen — close on hands working the earth,NAYRA;TUPAQ;KITCHEN,5
+S06_02,6,2,B,"Brother and sister argue in the kitchen — tight on Nayra's face, holding the beat",NAYRA;TUPAQ;KITCHEN,5
+S06_03,6,3,C,"Brother and sister argue in the kitchen — two-shot, neither of them looking at the other",NAYRA;TUPAQ;KITCHEN,6
+S06_04,6,4,C,Brother and sister argue in the kitchen — texture — dust lifting off dry stone,NAYRA;TUPAQ;KITCHEN,6
+S06_05,6,5,C,Brother and sister argue in the kitchen — close on hands working the earth,NAYRA;TUPAQ;KITCHEN,5
+S06_06,6,6,A,Brother and sister argue in the kitchen — texture — dust lifting off dry stone,NAYRA;TUPAQ;KITCHEN,3
+S07_01,7,1,B,"The mine survey team arrives — low angle, figures against a bleached sky",SURVEYORS;TRUCK;THEODOLITE,5
+S07_02,7,2,C,The mine survey team arrives — insert — water finding the channel lip,SURVEYORS;TRUCK;THEODOLITE,3
+S07_03,7,3,B,"The mine survey team arrives — low angle, figures against a bleached sky",SURVEYORS;TRUCK;THEODOLITE,3
+S07_04,7,4,A,"The mine survey team arrives — tight on Surveyors's face, holding the beat",SURVEYORS;TRUCK;THEODOLITE,5
+S07_05,7,5,B,"The mine survey team arrives — two-shot, neither of them looking at the other",SURVEYORS;TRUCK;THEODOLITE,5
+S08_01,8,1,B,"Night — the offering at the apacheta — low angle, figures against a bleached sky",APACHETA;NAYRA;COCA,8
+S08_02,8,2,B,"Night — the offering at the apacheta — medium on Apacheta, wind moving the shawl",APACHETA;NAYRA;COCA,8
+S08_03,8,3,B,Night — the offering at the apacheta — over-shoulder toward the far ridge,APACHETA;NAYRA;COCA,6
+S08_04,8,4,A,Night — the offering at the apacheta — over-shoulder toward the far ridge,APACHETA;NAYRA;COCA,5
+S08_05,8,5,A,Night — the offering at the apacheta — over-shoulder toward the far ridge,APACHETA;NAYRA;COCA,8
+S08_06,8,6,C,"Night — the offering at the apacheta — low angle, figures against a bleached sky",APACHETA;NAYRA;COCA,4
+S09_01,9,1,C,Digging the old canal by hand — texture — dust lifting off dry stone,CANAL;VILLAGERS;TOOLS,3
+S09_02,9,2,A,Digging the old canal by hand — insert — coca leaves on wet cloth,CANAL;VILLAGERS;TOOLS,8
+S09_03,9,3,A,"Digging the old canal by hand — high wide, the village small in the frame",CANAL;VILLAGERS;TOOLS,8
+S09_04,9,4,B,"Digging the old canal by hand — wide establishing, low sun raking the terrace walls",CANAL;VILLAGERS;TOOLS,8
+S10_01,10,1,B,Rain that does not come — texture — dust lifting off dry stone,SKY;TERRACE;NAYRA,5
+S10_02,10,2,C,Rain that does not come — close on hands working the earth,SKY;TERRACE;NAYRA,5
+S10_03,10,3,B,Rain that does not come — close on hands working the earth,SKY;TERRACE;NAYRA,5
+S10_04,10,4,A,"Rain that does not come — medium on Sky, wind moving the shawl",SKY;TERRACE;NAYRA,6
+S10_05,10,5,B,Rain that does not come — tracking behind Sky along the wall,SKY;TERRACE;NAYRA,6
+S10_06,10,6,A,"Rain that does not come — low angle, figures against a bleached sky",SKY;TERRACE;NAYRA,8
+S11_01,11,1,B,"Tupaq signs the survey papers — wide establishing, low sun raking the terrace walls",TUPAQ;SURVEYORS;PAPERS,5
+S11_02,11,2,B,Tupaq signs the survey papers — texture — dust lifting off dry stone,TUPAQ;SURVEYORS;PAPERS,4
+S11_03,11,3,B,Tupaq signs the survey papers — insert — water finding the channel lip,TUPAQ;SURVEYORS;PAPERS,6
+S11_04,11,4,A,Tupaq signs the survey papers — insert — water finding the channel lip,TUPAQ;SURVEYORS;PAPERS,8
+S11_05,11,5,C,"Tupaq signs the survey papers — tight on Tupaq's face, holding the beat",TUPAQ;SURVEYORS;PAPERS,3
+S11_06,11,6,C,"Tupaq signs the survey papers — low angle, figures against a bleached sky",TUPAQ;SURVEYORS;PAPERS,3
+S11_07,11,7,C,"Tupaq signs the survey papers — two-shot, neither of them looking at the other",TUPAQ;SURVEYORS;PAPERS,6
+S12_01,12,1,B,The herd moves to higher ground — texture — dust lifting off dry stone,ALPACAS;HERDER;RIDGE,6
+S12_02,12,2,B,"The herd moves to higher ground — medium on Alpacas, wind moving the shawl",ALPACAS;HERDER;RIDGE,4
+S12_03,12,3,A,The herd moves to higher ground — over-shoulder toward the far ridge,ALPACAS;HERDER;RIDGE,8
+S12_04,12,4,C,The herd moves to higher ground — tracking behind Alpacas along the wall,ALPACAS;HERDER;RIDGE,4
+S12_05,12,5,C,The herd moves to higher ground — insert — water finding the channel lip,ALPACAS;HERDER;RIDGE,5
+S13_01,13,1,B,Nayra confronts the foreman — insert — coca leaves on wet cloth,NAYRA;FOREMAN;CAMP,5
+S13_02,13,2,B,Nayra confronts the foreman — close on hands working the earth,NAYRA;FOREMAN;CAMP,5
+S13_03,13,3,A,Nayra confronts the foreman — tracking behind Nayra along the wall,NAYRA;FOREMAN;CAMP,5
+S13_04,13,4,B,"Nayra confronts the foreman — medium on Nayra, wind moving the shawl",NAYRA;FOREMAN;CAMP,5
+S13_05,13,5,A,"Nayra confronts the foreman — tight on Nayra's face, holding the beat",NAYRA;FOREMAN;CAMP,5
+S13_06,13,6,A,Nayra confronts the foreman — texture — dust lifting off dry stone,NAYRA;FOREMAN;CAMP,5
+S14_01,14,1,B,"The channel breaks open — medium on Channel, wind moving the shawl",CHANNEL;WATER;VILLAGERS,6
+S14_02,14,2,C,The channel breaks open — tracking behind Channel along the wall,CHANNEL;WATER;VILLAGERS,3
+S14_03,14,3,A,The channel breaks open — texture — dust lifting off dry stone,CHANNEL;WATER;VILLAGERS,5
+S15_01,15,1,B,Funeral procession on the ridge — insert — coca leaves on wet cloth,PROCESSION;RIDGE;CLOTH,5
+S15_02,15,2,C,"Funeral procession on the ridge — high wide, the village small in the frame",PROCESSION;RIDGE;CLOTH,5
+S15_03,15,3,C,"Funeral procession on the ridge — medium on Procession, wind moving the shawl",PROCESSION;RIDGE;CLOTH,5
+S15_04,15,4,C,"Funeral procession on the ridge — tight on Procession's face, holding the beat",PROCESSION;RIDGE;CLOTH,3
+S15_05,15,5,C,"Funeral procession on the ridge — medium on Procession, wind moving the shawl",PROCESSION;RIDGE;CLOTH,3
+S16_01,16,1,A,"The assembly votes — two-shot, neither of them looking at the other",PLAZA;ELDERS;HANDS,3
+S16_02,16,2,C,The assembly votes — tracking behind Plaza along the wall,PLAZA;ELDERS;HANDS,5
+S16_03,16,3,B,The assembly votes — over-shoulder toward the far ridge,PLAZA;ELDERS;HANDS,5
+S16_04,16,4,B,"The assembly votes — low angle, figures against a bleached sky",PLAZA;ELDERS;HANDS,5
+S17_01,17,1,B,"Tupaq works the terrace alone — medium on Tupaq, wind moving the shawl",TUPAQ;TERRACE;HOE,4
+S17_02,17,2,B,"Tupaq works the terrace alone — wide establishing, low sun raking the terrace walls",TUPAQ;TERRACE;HOE,4
+S17_03,17,3,A,Tupaq works the terrace alone — over-shoulder toward the far ridge,TUPAQ;TERRACE;HOE,5
+S17_04,17,4,C,Tupaq works the terrace alone — tracking behind Tupaq along the wall,TUPAQ;TERRACE;HOE,4
+S18_01,18,1,B,First water down the new channel — over-shoulder toward the far ridge,CHANNEL;WATER;CHILDREN,3
+S18_02,18,2,C,First water down the new channel — insert — coca leaves on wet cloth,CHANNEL;WATER;CHILDREN,3
+S18_03,18,3,C,First water down the new channel — texture — dust lifting off dry stone,CHANNEL;WATER;CHILDREN,5
+S18_04,18,4,A,First water down the new channel — close on hands working the earth,CHANNEL;WATER;CHILDREN,6
+S18_05,18,5,C,"First water down the new channel — wide establishing, low sun raking the terrace walls",CHANNEL;WATER;CHILDREN,4
+S18_06,18,6,A,"First water down the new channel — medium on Channel, wind moving the shawl",CHANNEL;WATER;CHILDREN,6
+S19_01,19,1,B,Ayni — the exchange of labour — tracking behind Villagers along the wall,VILLAGERS;TERRACE;HARVEST,6
+S19_02,19,2,B,Ayni — the exchange of labour — over-shoulder toward the far ridge,VILLAGERS;TERRACE;HARVEST,3
+S19_03,19,3,B,Ayni — the exchange of labour — tracking behind Villagers along the wall,VILLAGERS;TERRACE;HARVEST,3
+S19_04,19,4,C,Ayni — the exchange of labour — close on hands working the earth,VILLAGERS;TERRACE;HARVEST,5
+S19_05,19,5,B,"Ayni — the exchange of labour — high wide, the village small in the frame",VILLAGERS;TERRACE;HARVEST,6
+S19_06,19,6,A,"Ayni — the exchange of labour — two-shot, neither of them looking at the other",VILLAGERS;TERRACE;HARVEST,5
+S19_07,19,7,B,Ayni — the exchange of labour — tracking behind Villagers along the wall,VILLAGERS;TERRACE;HARVEST,4
+S20_01,20,1,B,Last light on the altiplano — insert — water finding the channel lip,ALTIPLANO;NAYRA;TUPAQ,6
+S20_02,20,2,C,Last light on the altiplano — over-shoulder toward the far ridge,ALTIPLANO;NAYRA;TUPAQ,4
+S20_03,20,3,B,"Last light on the altiplano — two-shot, neither of them looking at the other",ALTIPLANO;NAYRA;TUPAQ,5
+S20_04,20,4,B,Last light on the altiplano — insert — water finding the channel lip,ALTIPLANO;NAYRA;TUPAQ,3
+S20_05,20,5,B,Last light on the altiplano — texture — dust lifting off dry stone,ALTIPLANO;NAYRA;TUPAQ,6
