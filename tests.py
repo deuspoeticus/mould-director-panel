@@ -21,6 +21,7 @@ import placeholder
 import runner as runner_mod
 import server as server_mod
 import store as store_mod
+import thumbs
 import validate as validate_mod
 
 
@@ -529,6 +530,134 @@ class TestContactSheet(Base):
         self.assertNotIn("/media/", body)      # no server dependency
 
 
+class TestThumbnails(Base):
+    def tearDown(self):
+        thumbs.set_backends(None, None)
+        super().tearDown()
+
+    def test_svg_and_tiny_sources_are_never_thumbnailed(self):
+        thumbs.set_backends("pillow", "ffmpeg")
+        self.assertFalse(thumbs.wants_thumb("images/S01_01_a1.svg"))
+        self.assertFalse(thumbs.wants_thumb(None))
+
+    def test_still_and_poster_backends_are_independent(self):
+        # Pillow resizes stills but cannot open an mp4; whether posters are
+        # possible depends on ffmpeg alone.
+        thumbs.set_backends("pillow", "none")
+        self.assertTrue(thumbs.wants_thumb("images/S01_01_a1.jpg"))
+        self.assertFalse(thumbs.wants_thumb("videos/S01_01_a1.mp4"))
+        thumbs.set_backends("pillow", "ffmpeg")
+        self.assertTrue(thumbs.wants_thumb("videos/S01_01_a1.mp4"))
+        thumbs.set_backends("none", "ffmpeg")
+        self.assertFalse(thumbs.wants_thumb("images/S01_01_a1.jpg"))
+        self.assertTrue(thumbs.wants_thumb("videos/S01_01_a1.mp4"))
+
+    def test_with_no_backend_nothing_is_built_and_nothing_breaks(self):
+        thumbs.set_backends("none", "none")
+        self.image_done("S21_01")
+        self.assertFalse(thumbs.wants_thumb("images/x.jpg"))
+        self.assertIsNone(thumbs.ensure(self.store, "images/x.jpg"))
+        report = thumbs.backfill(self.store)
+        self.assertEqual(report["made"], [])
+        self.assertEqual(report["backend"], "none")
+
+    def test_a_broken_source_falls_back_instead_of_raising(self):
+        thumbs.set_backends("pillow", "ffmpeg")
+        self.image_done("S21_02")
+        media = "images/S21_02_a1.jpg"
+        with open(os.path.join(self.store.media_dir, media), "wb") as fh:
+            fh.write(b"not really a jpeg")
+        self.assertIsNone(thumbs.ensure(self.store, media))
+        # and no half-written file is left behind
+        self.assertFalse(os.path.exists(
+            os.path.join(self.store.media_dir, thumbs.thumb_relative(media))))
+
+    def test_the_thumb_path_mirrors_the_media_path(self):
+        self.assertEqual(thumbs.thumb_relative("images/S07_04_a2.png"),
+                         ".thumbs/images/S07_04_a2.jpg")
+        self.assertEqual(thumbs.thumb_relative("videos/S07_04_a1.mp4", ".png"),
+                         ".thumbs/videos/S07_04_a1.png")
+
+    @unittest.skipIf(thumbs.still_backend() == "none", "no still backend installed")
+    def test_a_real_thumbnail_is_much_smaller_than_its_source(self):
+        self.image_done("S21_03")
+        source = "images/big.png"
+        _write_big_png(os.path.join(self.store.media_dir, source), 2048, 1152)
+        relative = thumbs.ensure(self.store, source)
+        self.assertIsNotNone(relative)
+        full = os.path.getsize(os.path.join(self.store.media_dir, source))
+        small = os.path.getsize(os.path.join(self.store.media_dir, relative))
+        self.assertLess(small, full / 4)
+
+    @unittest.skipIf(thumbs.video_backend() == "none", "no ffmpeg installed")
+    def test_a_poster_frame_is_pulled_from_a_real_clip(self):
+        clip = _write_clip(os.path.join(self.store.media_dir, "videos/S21_05_a1.webm"))
+        relative = thumbs.ensure(self.store, clip)
+        self.assertIsNotNone(relative, "no poster frame was produced")
+        self.assertTrue(os.path.exists(os.path.join(self.store.media_dir, relative)))
+        # Reused, not rebuilt, on the next request.
+        again = thumbs.ensure(self.store, clip)
+        self.assertEqual(again, relative)
+
+    def test_a_stale_thumbnail_is_rebuilt_not_reused(self):
+        thumbs.set_backends("pillow", "ffmpeg")
+        media = "images/S21_04_a1.png"
+        _write_big_png(os.path.join(self.store.media_dir, media), 64, 64)
+        first = thumbs.ensure(self.store, media)
+        self.assertIsNotNone(first)
+        thumb = os.path.join(self.store.media_dir, first)
+        os.utime(thumb, (1, 1))                # thumbnail older than its source
+        marker = os.path.getmtime(thumb)
+        self.assertIsNotNone(thumbs.ensure(self.store, media))
+        self.assertGreater(os.path.getmtime(thumb), marker)
+
+
+def _write_clip(path, seconds=1):
+    """A real encoded clip, for the poster-frame path. Needs an ffmpeg that can
+    both decode an image and encode video; minimal builds can do neither, and
+    that is a fact about the machine, not about the code under test."""
+    import subprocess
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    frame = path + ".src.png"
+    _write_big_png(frame, 160, 90)
+    with open(frame, "rb") as fh:
+        blob = fh.read()
+    try:
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "image2pipe",
+                        "-framerate", "6", "-i", "-", "-c:v", "libvpx",
+                        "-t", str(seconds), path],
+                       input=blob * 6, check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=60)
+    except (subprocess.SubprocessError, OSError) as exc:
+        raise unittest.SkipTest("this ffmpeg cannot build a fixture clip: %s" % exc)
+    finally:
+        if os.path.exists(frame):
+            os.unlink(frame)
+    return os.path.relpath(path, os.path.dirname(os.path.dirname(path)))
+
+
+def _write_big_png(path, width, height):
+    """A valid PNG with no image library — one huge uncompressed-ish block."""
+    import struct
+    import zlib
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    raw = bytearray()
+    for y in range(height):
+        raw.append(0)
+        for x in range(width):
+            raw += bytes(((x * 7) % 256, (y * 5) % 256, ((x + y) * 3) % 256))
+
+    def chunk(tag, payload):
+        return (struct.pack(">I", len(payload)) + tag + payload +
+                struct.pack(">I", zlib.crc32(tag + payload) & 0xFFFFFFFF))
+
+    with open(path, "wb") as fh:
+        fh.write(b"\x89PNG\r\n\x1a\n")
+        fh.write(chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)))
+        fh.write(chunk(b"IDAT", zlib.compress(bytes(raw), 1)))
+        fh.write(chunk(b"IEND", b""))
+
+
 class TestHttp(Base):
     """The panel talks to the server over exactly these routes."""
 
@@ -578,6 +707,26 @@ class TestHttp(Base):
         with urllib.request.urlopen("http://127.0.0.1:%d/media/%s"
                                     % (self.port, media)) as response:
             self.assertEqual(response.headers["Content-Type"], "image/svg+xml")
+
+    def test_the_thumb_route_always_answers_even_with_no_backend(self):
+        thumbs.set_backends("none", "none")
+        try:
+            self.image_done("S02_10")
+            media = self.store.read("image", "S02_10")["media"]
+            with urllib.request.urlopen("http://127.0.0.1:%d/thumb/%s"
+                                        % (self.port, media)) as response:
+                self.assertEqual(response.status, 200)
+                self.assertTrue(response.read())   # the original, served whole
+        finally:
+            thumbs.set_backends(None, None)
+
+    def test_thumb_paths_cannot_escape_the_media_directory(self):
+        try:
+            with urllib.request.urlopen(
+                    "http://127.0.0.1:%d/thumb/../../config.json" % self.port):
+                self.fail("path traversal was served")
+        except urllib.error.HTTPError as exc:
+            self.assertIn(exc.code, (403, 404))
 
     def test_media_paths_cannot_escape_the_media_directory(self):
         try:

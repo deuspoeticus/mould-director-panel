@@ -32,6 +32,7 @@ import time
 
 import placeholder
 import store as store_mod
+import thumbs
 
 TIER_PRIORITY = {"A": 0, "B": 1, "C": 2, None: 3}
 LOG_LIMIT = 200
@@ -220,6 +221,9 @@ class Runner:
             "attempt": record.get("attempts", 0), "driver": self.driver,
         })
         self.store.write(stage, record)
+        # Build the review-wall thumbnail now, while the runner is the one
+        # waiting, rather than when the director scrolls onto the tile.
+        thumbs.ensure(self.store, media)
         self._retire_order(record.get("job_id"), "done")
         self.log("done", shot_id=shot_id, stage=stage, credits=credits, media=media)
         self._write_state(running=None)

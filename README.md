@@ -159,10 +159,53 @@ keyboard map all read from it.
 | `POST` | `/api/queue` | enqueue regeneration or local edit for one stage |
 | `POST` | `/api/bulk_approve` | C-tier only |
 | `POST` | `/api/export/contact_sheet` | static HTML export |
+| `GET` | `/thumb/…` | review-wall thumbnail, falling back to the original |
 | `GET` | `/media/…` | generated stills and clips, range requests supported |
 
 The review filters are query parameters: `state`, `tier`, `scene`, `code`,
 `flagged`.
+
+## Media weight, and why the wall stays quick
+
+Forty tiles on screen at 2k each is how a review wall turns back into
+one-at-a-time inspection. Two things keep that from happening, and both matter
+more with real media than with the demo's placeholders.
+
+**Stills come from `/thumb`, not `/media`.** Thumbnails are written under
+`media/.thumbs/`, built by the runner when it books a result, on demand when the
+panel asks for one that does not exist, and in bulk by `thumbs.py`. The
+inspector still serves full resolution — that is where you judge detail.
+
+**Clips are never all decoded at once.** A tile's `<video>` carries no `src`
+until an IntersectionObserver hands it one, and never more than twelve are
+attached at a time, ranked by distance from the middle of the screen. Browsers
+cap concurrent video decoders and the failure mode past that cap is tiles that
+silently never start. Eviction is on a 400ms delay so that moving the cursor
+across a row does not make clips decode themselves from scratch on the way back.
+
+Measured on a 109-shot project with real media — 2k JPEG stills, h264-class
+clips, nothing mocked:
+
+| | full resolution | through the panel |
+| --- | --- | --- |
+| 117 media files on disk | 27.5 MB | 2.0 MB of thumbnails (13.9×) |
+| first paint of the visible wall | — | 0.80s, 1.3 MB transferred, zero full-res requests |
+| clip decoders attached, worst case | 29 | 12 |
+
+Those synthetic stills averaged 303 KB. Real Cinema Studio 2k output is
+heavier, which moves the ratio further in the thumbnails' favour, not less.
+
+Thumbnails are optional and have no hard dependency. Backends are detected
+independently — stills prefer Pillow, then ffmpeg, then macOS `sips`; poster
+frames need ffmpeg and nothing else will do. With none installed, `/thumb`
+serves the original and the panel behaves exactly as it did before thumbnails
+existed. The one thing worth installing:
+
+```bash
+pip install pillow            # stills
+# ffmpeg, if you want poster frames on clip tiles
+python3 thumbs.py --root .    # warm the cache for media already on disk
+```
 
 ## The runner, and where real generation attaches
 
@@ -192,6 +235,7 @@ first, so if the sprint runs out of credits it runs out on inserts.
 ```bash
 python3 contact_sheet.py --root . --stage image --tier A   # static, sendable
 python3 validate.py --root .                               # schema, elements, tiers
+python3 thumbs.py --root . [--force]                       # review-wall thumbnails
 ```
 
 The contact sheet embeds stills as data URIs, so a stills sheet is a single file

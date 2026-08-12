@@ -20,6 +20,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import codes as codeset
 import store as store_mod
+import thumbs
 from contact_sheet import build_contact_sheet
 from validate import validate_manifest
 
@@ -118,6 +119,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"ok": True, **st.inspect(shot_id)})
             if path == "/api/validate":
                 return self._json({"ok": True, **validate_manifest(st)})
+            if path.startswith("/thumb/"):
+                return self._serve_thumb(st, path[len("/thumb/"):])
             if path.startswith("/media/"):
                 return self._serve_tree(st.media_dir, path[len("/media/"):])
             if path.startswith("/exports/"):
@@ -229,6 +232,16 @@ class Handler(BaseHTTPRequestHandler):
         out.sort(key=lambda r: (r["scene"] if r["scene"] is not None else 999,
                                 r["slot"] or 0, r["shot_id"]))
         return out
+
+    def _serve_thumb(self, st, relative):
+        """A thumbnail if one can exist, the original if not. The grid asks for
+        this URL for every tile, so it must always answer with something."""
+        media = urllib.parse.unquote(relative)
+        try:
+            thumb = thumbs.ensure(st, media)
+        except Exception:
+            thumb = None
+        return self._serve_tree(st.media_dir, thumb or media)
 
     def _file(self, path):
         if not os.path.isfile(path):

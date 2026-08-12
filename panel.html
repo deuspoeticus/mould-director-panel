@@ -386,14 +386,32 @@ const post = (path, body) => api(path, {
   body: JSON.stringify(body),
 });
 
+function mediaURL(prefix, src){
+  return prefix + src.split("/").map(encodeURIComponent).join("/");
+}
+
+/* Full resolution, plays immediately. For the inspector, where one shot has the
+   whole screen. */
 function mediaTag(src, autoplay){
   if (!src) return '<div class="nomedia">no media yet</div>';
-  const url = "/media/" + src.split("/").map(encodeURIComponent).join("/");
+  const url = mediaURL("/media/", src);
   if (VIDEO_EXT.test(src)) {
     return '<video src="' + esc(url) + '" muted loop playsinline ' +
       (autoplay ? "autoplay " : "") + 'preload="metadata"></video>';
   }
   return '<img src="' + esc(url) + '" alt="" loading="lazy">';
+}
+
+/* The grid. Forty of these can be on screen at once, so stills come from
+   /thumb and clips carry no src at all until the observer hands them one. */
+function tileMedia(src){
+  if (!src) return '<div class="nomedia">no media yet</div>';
+  const thumb = mediaURL("/thumb/", src);
+  if (VIDEO_EXT.test(src)) {
+    return '<video data-src="' + esc(mediaURL("/media/", src)) + '" poster="' +
+      esc(thumb) + '" muted loop playsinline preload="none"></video>';
+  }
+  return '<img src="' + esc(thumb) + '" alt="" loading="lazy" decoding="async">';
 }
 
 /* ------------------------------------------------------------------ boot */
@@ -458,12 +476,14 @@ function renderReview(){
     grid.innerHTML = '<div class="empty">Nothing matches these filters.<br>' +
       "The queue for this stage and state is empty.</div>";
     $("#reviewCount").textContent = "0 shots";
+    observePlayback();
     return;
   }
   grid.innerHTML = S.rows.map((row, index) => tileHTML(row, index)).join("");
   $("#reviewCount").textContent = S.rows.length + " shots · " +
     S.rows.filter(r => r.record.state === "done").length + " undecided";
   focusCursor(false);
+  observePlayback();
 }
 
 function tileHTML(row, index){
@@ -512,7 +532,7 @@ function tileHTML(row, index){
 
   return '<article class="tile' + (index === S.cursor ? " cursor" : "") +
     '" data-index="' + index + '" data-shot="' + esc(row.shot_id) + '" tabindex="-1">' +
-    '<div class="media">' + mediaTag(rec.media, isVideo) +
+    '<div class="media">' + tileMedia(rec.media) +
       '<div class="badges"><span class="shotid">' + esc(row.shot_id) + "</span>" +
       '<span class="tier ' + esc(row.tier || "") + '">' + esc(row.tier || "—") +
       "</span></div>" +
@@ -552,6 +572,74 @@ function move(delta){
   if (!S.rows.length) return;
   S.cursor = Math.max(0, Math.min(S.rows.length - 1, S.cursor + delta));
   focusCursor(true);
+  reconcilePlayback();
+}
+
+/* ---------------------------------------------------------- clip playback */
+/* A hundred clips in the DOM must not be a hundred clips being decoded. Only
+   what is on screen gets a src, and never more than this many at once —
+   browsers cap concurrent video decoders, and the failure mode when you cross
+   the cap is tiles that silently never start. */
+const PLAY_LIMIT = 12;
+let observer = null;
+const onScreen = new Set();
+
+function observePlayback(){
+  if (observer) observer.disconnect();
+  onScreen.clear();
+  const videos = $$("#reviewGrid video[data-src]");
+  if (!videos.length) { observer = null; return; }
+  observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) onScreen.add(entry.target);
+      else { onScreen.delete(entry.target); detachClip(entry.target); }
+    }
+    reconcilePlayback();
+  }, { root: null, rootMargin: "300px 0px", threshold: 0.05 });
+  videos.forEach(video => observer.observe(video));
+}
+
+function reconcilePlayback(){
+  if (!onScreen.size) return;
+  const middle = window.innerHeight / 2;
+  const ranked = Array.from(onScreen).sort((a, b) => distance(a, middle) -
+    distance(b, middle));
+  ranked.slice(0, PLAY_LIMIT).forEach(attachClip);
+  // Evicting on a delay: moving the cursor across a row re-ranks everything
+  // several times a second, and a clip that drops out of the top twelve for
+  // 200ms should not have to decode itself from scratch on the way back.
+  ranked.slice(PLAY_LIMIT).forEach(scheduleDetach);
+}
+
+const evicting = new Map();
+
+function scheduleDetach(video){
+  if (evicting.has(video)) return;
+  evicting.set(video, setTimeout(() => {
+    evicting.delete(video);
+    detachClip(video);
+  }, 400));
+}
+
+function distance(video, middle){
+  const box = video.getBoundingClientRect();
+  return Math.abs((box.top + box.bottom) / 2 - middle);
+}
+
+function attachClip(video){
+  const pending = evicting.get(video);
+  if (pending) { clearTimeout(pending); evicting.delete(video); }
+  if (!video.getAttribute("src")) video.setAttribute("src", video.dataset.src);
+  if (video.paused) video.play().catch(() => {});   // autoplay policy, muted
+}
+
+function detachClip(video){
+  const pending = evicting.get(video);
+  if (pending) { clearTimeout(pending); evicting.delete(video); }
+  if (!video.getAttribute("src")) return;
+  video.pause();
+  video.removeAttribute("src");
+  video.load();          // releases the decoder; the poster takes over again
 }
 
 function columns(){
@@ -594,8 +682,9 @@ async function refreshRow(index, result){
   row.at_cap = row.record.attempts >= S.meta.attempt_cap;
   const el = $('.tile[data-index="' + index + '"]');
   if (el) {
-    el.outerHTML = tileHTML(row, index);
+    el.outerHTML = tileHTML(row, index);   // the old <video> node is gone with it
     focusCursor(false);
+    observePlayback();
   }
 }
 
@@ -953,6 +1042,15 @@ function wire(){
   $("#bulkVideo").onclick = () => bulkApprove("video");
 
   document.addEventListener("keydown", onKey);
+
+  // Scrolling through a dense grid changes which clips are nearest the middle
+  // without necessarily crossing an observer boundary.
+  let ticking = false;
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { ticking = false; reconcilePlayback(); });
+  }, { passive: true });
 }
 
 async function exportSheet(stage){
