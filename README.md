@@ -6,6 +6,7 @@ still needs work, and in plain words what is missing.
 
 ```
 index.html      the whole thing
+AGENTS.md       the contract, if an agent is generating the shots for you
 ```
 
 ## Using it
@@ -45,6 +46,33 @@ about what is missing, and that sentence is what you send back.
 Notes are kept per shot per stage, with a timestamp, and stay on the shot after
 it is fixed — the history of what went wrong is usually the useful part. Delete
 one with the `×` on the note.
+
+## Working with an agent
+
+If a Claude agent is generating the shots for you with Higgsfield, it never
+needs the browser and you never need to copy media around. You meet at two files
+beside `index.html`:
+
+- **`shots.js`** — the agent writes it: what it has generated, with the media
+  URL, the prompt it used, the model, the generation id and the credits. Press
+  **⟳ Check for new work** and it lands in your wall, without losing your place.
+  You can keep reviewing while it works.
+- **`work-order.json`** — you hand it over from **Overview → Work for the
+  agent**: four queues derived from your decisions, so nobody maintains a list.
+
+  | Queue | |
+  | --- | --- |
+  | needs prompting | no still yet |
+  | needs work | your note, plus the prompt that produced the take you rejected |
+  | ready to animate | still approved — carries its URL as the **start frame** |
+  | ready to upscale | clip approved |
+
+The agent can never set a status. It generates; you judge. Delivering new media
+puts that shot back in front of you as *to review*, and that is the only change
+it can cause. `AGENTS.md` is the contract — point the agent at it.
+
+Media stays where Higgsfield put it: the panel loads remote URLs directly, so
+there is nothing to download.
 
 ## Where the data lives
 
