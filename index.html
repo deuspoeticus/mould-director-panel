@@ -138,6 +138,10 @@ table.scenes td{padding:2px}
   text-transform:uppercase;letter-spacing:.08em}
 .todorow .txt{flex:1;color:#e3c9a8}
 .todorow.empty{color:var(--dimmer)}
+.chip{font:600 10px/1 ui-monospace,Menlo,monospace;background:var(--panel2);
+  border:1px solid var(--line);border-radius:3px;padding:4px 6px;color:var(--dim);
+  cursor:pointer;margin:0 4px 4px 0}
+.chip:hover{color:var(--text);border-color:#3f3f4a}
 
 table.shots{width:100%;border-collapse:collapse;font-size:12px}
 table.shots th{text-align:left;color:var(--dim);font-weight:600;font-size:10px;
@@ -170,6 +174,10 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-bottom-width:2p
 .keys{display:grid;grid-template-columns:96px 1fr;gap:7px 12px;font-size:12px;
   align-items:baseline}
 .keys div:nth-child(even){color:var(--dim)}
+.kv{display:grid;grid-template-columns:104px 1fr;gap:4px 12px;font-size:12px;
+  border-top:1px solid var(--line)}
+.kv dt{color:var(--dimmer)}
+.kv dd{margin:0;color:var(--dim);word-break:break-word}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:80;
   background:#000;border:1px solid var(--line);border-radius:4px;padding:8px 14px;
   font-size:12px;display:none;max-width:80vw}
@@ -191,6 +199,8 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-bottom-width:2p
   </nav>
   <span class="spacer"></span>
   <span class="saved" id="savedNote">saved locally</span>
+  <button class="btn" id="pullFeed"
+    title="Check shots.js for new work from the agent">⟳ Check for new work</button>
   <button class="btn" id="helpBtn" title="Keyboard help (?)">?</button>
 </header>
 
@@ -240,9 +250,18 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-bottom-width:2p
     <div class="section">
       <h2>What is missing
         <span class="spacer"></span>
-        <button class="btn" id="copyNotes">Copy list for the agent</button>
+        <button class="btn" id="copyNotes">Copy list as text</button>
       </h2>
       <div id="todoList"></div>
+    </div>
+    <div class="section">
+      <h2>Work for the agent
+        <span class="spacer"></span>
+        <button class="btn" id="copyOrder">Copy work order</button>
+        <button class="btn" id="downloadOrder">Download work-order.json</button>
+      </h2>
+      <div id="queueList"></div>
+      <div class="toolrow"><span class="hint" id="creditNote"></span></div>
     </div>
     <div class="section">
       <h2>Scenes</h2>
@@ -309,11 +328,16 @@ const STAGES = { still: "still", clip: "clip" };
 const STATUS = ["todo", "review", "approved", "rework"];
 
 /* ------------------------------------------------------------------ state */
-let data = { project: "AYNI", shots: [] };
+let data = { project: "AYNI", feedStamp: "", shots: [] };
 const ui = { tab: "review", stage: "still", cursor: 0, editing: null,
              draft: "", sendToStill: false,
              filters: { status: "review", scene: "all", tier: "all", search: "" } };
 let rows = [];
+
+/* Fields the agent fills in when it generates something. The panel only reads
+   them — they are there so a note lands attached to the prompt that caused it. */
+const PROVENANCE = ["prompt", "model", "generation_id", "credits", "created_at",
+                    "start_frame", "upscaled"];
 
 function blankStage(){ return { status: "todo", media: "", notes: [] }; }
 
@@ -339,12 +363,64 @@ function normalise(shot){
   return out;
 }
 
+/* One merge for both doors: the import box (your own export, statuses trusted)
+   and the agent's feed (statuses ignored — the agent generates, you judge). */
+function mergeShots(incoming, trustStatus){
+  let added = 0, touched = 0;
+  incoming.forEach(shot => {
+    const existing = shotById(shot.id);
+    if (!existing) {
+      if (!trustStatus) {
+        for (const stage of ["still", "clip"]) {
+          shot[stage].status = shot[stage].media ? "review" : "todo";
+        }
+      }
+      data.shots.push(shot);
+      added++;
+      return;
+    }
+    let changed = false;
+    if (shot.scene != null && shot.scene !== existing.scene) {
+      existing.scene = shot.scene; changed = true;
+    }
+    if (shot.tier) { existing.tier = shot.tier; changed = true; }
+    if (shot.description) { existing.description = shot.description; changed = true; }
+
+    for (const stage of ["still", "clip"]) {
+      const from = shot[stage], to = existing[stage];
+      const freshMedia = !!from.media && from.media !== to.media;
+      if (freshMedia) {
+        to.media = from.media;
+        to.status = "review";        // new media is a new thing to look at
+        changed = true;
+      }
+      PROVENANCE.forEach(field => {
+        if (from[field] !== undefined && from[field] !== to[field]) {
+          to[field] = from[field]; changed = true;
+        }
+      });
+      // Merging must be repeatable, so the same note never lands twice.
+      const seen = new Set(to.notes.map(n => n.at + "|" + n.text));
+      from.notes.forEach(note => {
+        if (seen.has(note.at + "|" + note.text)) return;
+        to.notes.push(note); changed = true;
+      });
+      if (trustStatus && from.status && from.status !== to.status && !freshMedia) {
+        to.status = from.status; changed = true;
+      }
+    }
+    if (changed) touched++;
+  });
+  return { added, touched };
+}
+
 function load(){
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       data.project = parsed.project || "AYNI";
+      data.feedStamp = parsed.feedStamp || "";
       data.shots = (parsed.shots || []).map(normalise);
     }
   } catch (err) { /* corrupt storage should not stop the panel opening */ }
@@ -380,7 +456,101 @@ function toast(message, bad){
   toast._t = setTimeout(() => { el.className = "toast"; }, bad ? 4200 : 2000);
 }
 
+/* ------------------------------------------------------------------- feed */
+/* The agent writes shots.js beside this file:
+     window.SHOTS_FEED = { project, updated, shots: [...] }
+   A page cannot fetch() a sibling file over file://, but it can load one as a
+   script — so that is the door the agent knocks on. Re-injecting the tag with a
+   cache-buster picks up a rewritten feed without reloading the page, which
+   means the agent can keep working while you review. */
+function pullFeed(quiet){
+  return new Promise(resolve => {
+    const tag = document.createElement("script");
+    tag.src = "shots.js?t=" + Date.now();
+    tag.onload = () => { tag.remove(); resolve(applyFeed(quiet)); };
+    tag.onerror = () => {
+      tag.remove();
+      if (!quiet) toast("no shots.js found next to this page", true);
+      resolve(false);
+    };
+    document.head.appendChild(tag);
+  });
+}
+
+function applyFeed(quiet){
+  const feed = window.SHOTS_FEED;
+  if (!feed || !Array.isArray(feed.shots)) {
+    if (!quiet) toast("shots.js loaded but had no shots in it", true);
+    return false;
+  }
+  const stamp = String(feed.updated || "") + ":" + feed.shots.length;
+  if (stamp === data.feedStamp && quiet) return false;
+  const result = mergeShots(feed.shots.map(normalise).filter(s => s.id), false);
+  data.feedStamp = stamp;
+  if (feed.project) data.project = feed.project;
+  save();
+  renderAll();
+  if (result.added || result.touched) {
+    toast("from shots.js — " + result.added + " new, " + result.touched + " updated");
+  } else if (!quiet) {
+    toast("shots.js had nothing new");
+  }
+  return true;
+}
+
 function shotById(id){ return data.shots.find(s => s.id === id); }
+
+/* ----------------------------------------------------------------- queues */
+/* Everything the agent should do next, derived from what you have approved —
+   there is no separate list to maintain. */
+function workQueues(){
+  const queues = { needs_prompting: [], needs_work: [], ready_to_animate: [],
+                   ready_to_upscale: [] };
+  const base = shot => ({ shot: shot.id, scene: shot.scene, tier: shot.tier,
+                          description: shot.description });
+  data.shots.forEach(shot => {
+    if (!shot.still.media) {
+      queues.needs_prompting.push(Object.assign(base(shot), { stage: "still" }));
+    }
+    for (const stage of ["still", "clip"]) {
+      const s = shot[stage];
+      if (s.status !== "rework") continue;
+      queues.needs_work.push(Object.assign(base(shot), {
+        stage,
+        note: s.notes.length ? s.notes[s.notes.length - 1].text : "",
+        earlier_notes: s.notes.slice(0, -1).map(n => n.text),
+        prompt: s.prompt || "",
+        model: s.model || "",
+        media: s.media || "",
+        generation_id: s.generation_id || "",
+      }));
+    }
+    // The approved still is the start frame the clip has to be built from.
+    if (shot.still.status === "approved" && shot.still.media && !shot.clip.media) {
+      queues.ready_to_animate.push(Object.assign(base(shot), {
+        stage: "clip",
+        start_frame: shot.still.media,
+        still_prompt: shot.still.prompt || "",
+      }));
+    }
+    if (shot.clip.status === "approved" && shot.clip.media && !shot.clip.upscaled) {
+      queues.ready_to_upscale.push(Object.assign(base(shot), {
+        stage: "clip", media: shot.clip.media,
+      }));
+    }
+  });
+  return queues;
+}
+
+function workOrder(){
+  return { project: data.project, generated: new Date().toISOString(),
+           queues: workQueues() };
+}
+
+function creditsSpent(){
+  return data.shots.reduce((total, shot) =>
+    total + Number(shot.still.credits || 0) + Number(shot.clip.credits || 0), 0);
+}
 function when(iso){
   const d = new Date(iso);
   return isNaN(d) ? "" : d.toLocaleDateString(undefined,
@@ -541,7 +711,15 @@ function actions(shot, stage){
 
 function composer(shot){
   const stage = shot[ui.stage];
-  return '<div class="composer"><textarea id="noteBox" placeholder="' +
+  // The prompt that produced this take, in front of you while you say what is
+  // wrong with it — that is what turns a note into a revision.
+  return '<div class="composer">' +
+    (stage.prompt
+      ? '<div class="hint" style="margin-bottom:6px">prompt: ' +
+        esc(stage.prompt.length > 190 ? stage.prompt.slice(0, 190) + "…" : stage.prompt) +
+        "</div>"
+      : "") +
+    '<textarea id="noteBox" placeholder="' +
     'What is missing or wrong? Plain words — this is what goes back to the agent.' +
     '">' + esc(ui.draft || "") + "</textarea>" +
     '<div class="row"><button class="btn warn" data-act="savenote">Save note</button>' +
@@ -669,6 +847,30 @@ function renderOverview(){
         '</span><span class="st">' + item.stage + '</span><span class="txt">' +
         esc(item.text) + "</span></div>").join("")
     : '<div class="todorow empty">Nothing is marked as needing work.</div>';
+
+  const queues = workQueues();
+  const titles = {
+    needs_prompting: ["Needs prompting", "no still yet — generate one"],
+    needs_work: ["Needs work", "your note says what is wrong"],
+    ready_to_animate: ["Ready to animate", "still approved — animate from it as the " +
+      "start frame"],
+    ready_to_upscale: ["Ready to upscale", "clip approved — upscale it"],
+  };
+  $("#queueList").innerHTML = Object.keys(titles).map(key => {
+    const items = queues[key];
+    const chips = items.slice(0, 24).map(item =>
+      '<button class="chip" data-open="' + esc(item.shot) + '" data-stage="' +
+      esc(item.stage) + '">' + esc(item.shot) + "</button>").join("");
+    return '<div class="todorow"><span class="st" style="width:118px">' +
+      titles[key][0] + '</span><span class="id" style="width:40px">' + items.length +
+      '</span><span class="txt" style="color:var(--dim)">' +
+      (items.length ? chips + (items.length > 24 ? " …" : "")
+                    : "<i>" + titles[key][1] + "</i>") + "</span></div>";
+  }).join("");
+  const credits = creditsSpent();
+  $("#creditNote").textContent = credits
+    ? credits + " credits recorded by the agent so far"
+    : "The agent records credits per generation; nothing recorded yet.";
 
   const scenes = {};
   data.shots.forEach(shot => {
@@ -833,23 +1035,8 @@ function doImport(replace){
         !confirm("Replace all " + data.shots.length + " shots, including notes?")) return;
     data.shots = incoming;
   } else {
-    incoming.forEach(shot => {
-      const existing = shotById(shot.id);
-      if (!existing) return data.shots.push(shot);
-      // Merging must never quietly discard a decision or a note.
-      existing.scene = shot.scene ?? existing.scene;
-      existing.tier = shot.tier || existing.tier;
-      existing.description = shot.description || existing.description;
-      for (const stage of ["still", "clip"]) {
-        if (shot[stage].media && shot[stage].media !== existing[stage].media) {
-          existing[stage].media = shot[stage].media;
-          existing[stage].status = "review";   // new media deserves a fresh look
-        }
-        if (shot[stage].notes.length) {
-          existing[stage].notes = existing[stage].notes.concat(shot[stage].notes);
-        }
-      }
-    });
+    // Pasted by you, so statuses in it are yours and are trusted.
+    mergeShots(incoming, true);
   }
   $("#importBox").value = "";
   save();
@@ -897,6 +1084,7 @@ function openShot(id, stage){
       mediaTag(s.media, false, shot.still.media) + "</div>" +
     '<div class="meta"><span>' + label(s.status) + "</span><span>" +
       esc(s.media || "no media") + "</span></div>" +
+    provenance(s) +
     (s.notes.length
       ? '<div class="notes">' + s.notes.map(n =>
           '<div class="note"><time>' + esc(when(n.at)) + "</time><span>" +
@@ -906,6 +1094,18 @@ function openShot(id, stage){
   $("#modal").dataset.shot = shot.id;
   $("#modal").dataset.stage = stage;
   $("#scrim").classList.add("open");
+}
+
+/* What the agent recorded about this take. Read-only here. */
+function provenance(stage){
+  const fields = [
+    ["prompt", stage.prompt], ["model", stage.model],
+    ["start frame", stage.start_frame], ["generation", stage.generation_id],
+    ["credits", stage.credits], ["made", stage.created_at ? when(stage.created_at) : ""],
+  ].filter(([, value]) => value !== undefined && value !== "" && value !== null);
+  if (!fields.length) return "";
+  return '<dl class="kv" style="padding:9px;margin:0">' + fields.map(([k, v]) =>
+    "<dt>" + esc(k) + "</dt><dd>" + esc(v) + "</dd>").join("") + "</dl>";
 }
 
 function helpModal(){
@@ -925,7 +1125,10 @@ function helpModal(){
     row("?", "This help") +
     "</div><p class=\"hint\" style=\"margin-top:14px\">Everything is saved in this " +
     "browser as you go. Use <b>Shots → Download JSON</b> to keep a copy or move it " +
-    "to another machine.</p></div>";
+    "to another machine.</p><p class=\"hint\">If an agent is generating for you, it " +
+    "writes <b>shots.js</b> next to this file — <b>⟳ Check for new work</b> pulls in " +
+    "whatever it has finished, without losing your place. Hand work back from " +
+    "<b>Overview → Work for the agent</b>. See AGENTS.md for the contract.</p></div>";
   $("#scrim").classList.add("open");
 }
 
@@ -1027,6 +1230,16 @@ function wire(){
   });
 
   $("#copyNotes").onclick = copyNotes;
+  $("#pullFeed").onclick = () => pullFeed(false);
+  $("#copyOrder").onclick = () => {
+    const order = workOrder();
+    const total = Object.values(order.queues).reduce((n, q) => n + q.length, 0);
+    if (!total) return toast("there is no outstanding work to hand over");
+    copy(JSON.stringify(order, null, 2));
+    toast(total + " item(s) copied as a work order");
+  };
+  $("#downloadOrder").onclick = () =>
+    download("work-order.json", JSON.stringify(workOrder(), null, 2));
 
   $("#shotRows").addEventListener("input", event => {
     const input = event.target.closest("input[data-field]");
@@ -1073,7 +1286,7 @@ function wire(){
   $("#clearAll").onclick = () => {
     if (!confirm("Delete every shot and note from this browser? Export first if you " +
                  "want to keep them.")) return;
-    data = { project: "AYNI", shots: [] };
+    data = { project: "AYNI", feedStamp: "", shots: [] };
     localStorage.removeItem(KEY);
     renderAll();
     toast("cleared");
@@ -1151,6 +1364,8 @@ function onKey(event){
 load();
 wire();
 renderAll();
+// If the agent has left a shots.js next to this file, take it on the way in.
+pullFeed(true);
 </script>
 </body>
 </html>
