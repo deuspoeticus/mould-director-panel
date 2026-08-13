@@ -1,10 +1,3 @@
-# Production data is per-machine and generated. The shot plan is the input; the
-# records, the media and the runner's state are all derived from it.
-shots/
+# Media lives next to index.html but is not part of the repo.
 media/
-runner/
-exports/
-
-__pycache__/
-*.pyc
 .DS_Store

@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AYNI — shot panel</title>
+<style>
+:root{
+  color-scheme: dark;
+  --bg:#0b0b0d; --panel:#131317; --panel2:#191920; --line:#26262e;
+  --text:#e9e9ee; --dim:#8d8d98; --dimmer:#5d5d68; --focus:#f2f2f7;
+  --todo:#4a4a55; --review:#4a90d9; --approved:#3fa66b; --rework:#d08a3f;
+  --tierA:#ff9db1; --tierB:#9fc7ef; --tierC:#9ed3ac;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font:13px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+header{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;
+  padding:0 14px;height:44px;background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--dim)}
+nav{display:flex;gap:2px}
+nav button{background:none;border:0;padding:6px 11px;border-radius:4px;color:var(--dim);
+  cursor:pointer}
+nav button:hover{color:var(--text);background:var(--panel2)}
+nav button[aria-current="true"]{color:var(--text);background:var(--panel2);
+  box-shadow:inset 0 -2px 0 var(--review)}
+.spacer{flex:1}
+.saved{font-size:11px;color:var(--dimmer)}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:4px;
+  padding:5px 10px;color:var(--dim);cursor:pointer}
+.btn:hover{color:var(--text);border-color:#3f3f4a}
+.btn.go{border-color:#2f4c33;color:#9ed3ac}
+.btn.warn{border-color:#4a3423;color:#e3b98a}
+
+.view{display:none}
+.view.active{display:block}
+
+.filters{position:sticky;top:44px;z-index:20;display:flex;flex-wrap:wrap;gap:8px;
+  align-items:center;padding:8px 14px;background:rgba(11,11,13,.94);
+  backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.seg{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{background:var(--panel);border:0;padding:5px 12px;color:var(--dim);
+  cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--panel2);color:var(--text)}
+select,input[type=search]{background:var(--panel);border:1px solid var(--line);
+  border-radius:4px;padding:5px 8px}
+label.f{display:inline-flex;align-items:center;gap:5px;color:var(--dim);font-size:11px;
+  text-transform:uppercase;letter-spacing:.08em}
+.count{color:var(--dim);font-size:11px}
+
+.grid{display:grid;gap:10px;padding:10px 14px 120px;
+  grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:5px;
+  overflow:hidden;scroll-margin:110px}
+.tile.cursor{border-color:var(--focus);box-shadow:0 0 0 2px var(--focus)}
+.media{position:relative;background:#000;aspect-ratio:16/9;display:block;width:100%}
+.media img,.media video{width:100%;height:100%;object-fit:contain;display:block}
+.nomedia{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;color:var(--dimmer);font-size:11px}
+.badges{position:absolute;top:6px;left:6px;display:flex;gap:5px}
+.shotid{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;
+  background:rgba(0,0,0,.72);padding:4px 7px;border-radius:3px}
+.tier{font:600 10px/1 ui-monospace,Menlo,monospace;padding:4px 6px;border-radius:3px;
+  background:rgba(0,0,0,.72)}
+.tier.A{color:var(--tierA)} .tier.B{color:var(--tierB)} .tier.C{color:var(--tierC)}
+.status{position:absolute;top:6px;right:6px;font:600 10px/1 ui-monospace,Menlo,monospace;
+  letter-spacing:.08em;text-transform:uppercase;padding:4px 7px;border-radius:3px;
+  background:rgba(0,0,0,.72)}
+.status.todo{color:var(--todo)} .status.review{color:var(--review)}
+.status.approved{color:var(--approved)} .status.rework{color:var(--rework)}
+.meta{display:flex;gap:8px;align-items:baseline;padding:6px 9px;
+  border-top:1px solid var(--line);font-size:11px;color:var(--dimmer)}
+.meta .desc{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.notes{padding:0 9px 6px;display:flex;flex-direction:column;gap:4px}
+.note{background:#1d1812;border:1px solid #33291b;border-radius:3px;padding:5px 7px;
+  color:#e3c9a8;font-size:12px;display:flex;gap:6px;align-items:flex-start}
+.note time{color:#8a7455;font-size:10px;white-space:nowrap}
+.note .x{margin-left:auto;background:none;border:0;color:#8a7455;cursor:pointer;
+  padding:0 2px}
+.note .x:hover{color:#e3c9a8}
+.actions{display:flex;gap:4px;flex-wrap:wrap;padding:6px 9px;
+  border-top:1px solid var(--line);background:var(--panel2)}
+.actions button{background:var(--panel);border:1px solid var(--line);border-radius:3px;
+  padding:4px 8px;color:var(--dim);cursor:pointer;font-size:11px}
+.actions button:hover{color:var(--text);border-color:#3a3a45}
+.actions button.go{border-color:#2f4c33;color:#9ed3ac}
+.actions button.warn{border-color:#4a3423;color:#e3b98a}
+.composer{padding:8px 9px;border-top:1px solid var(--line);background:#16130f}
+.composer textarea{width:100%;min-height:62px;resize:vertical;background:#0d0d11;
+  border:1px solid #33291b;border-radius:3px;padding:7px 8px;color:var(--text)}
+.composer .row{display:flex;gap:6px;align-items:center;margin-top:6px}
+.hint{color:var(--dimmer);font-size:10px}
+
+.wrap{padding:14px 14px 90px;max-width:1200px}
+.section{margin-bottom:16px;background:var(--panel);border:1px solid var(--line);
+  border-radius:5px;overflow:hidden}
+.section h2{margin:0;padding:9px 12px;font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--line);
+  background:var(--panel2);display:flex;align-items:center;gap:10px}
+.section h2 .spacer{flex:1}
+.section .body{padding:11px 12px}
+.stats{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  padding:12px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:10px}
+.stat .n{font:600 21px/1.1 ui-monospace,Menlo,monospace}
+.stat .l{color:var(--dim);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  margin-top:5px}
+.bar{display:flex;height:10px;border-radius:3px;overflow:hidden;margin:0 12px 12px}
+.bar i{display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--dim);font-size:11px;
+  padding:0 12px 12px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+table.scenes{border-collapse:collapse;font-size:11px}
+table.scenes th{text-align:right;padding:3px 10px 3px 0;color:var(--dim);
+  white-space:nowrap;font-weight:600}
+table.scenes td{padding:2px}
+.cell{width:66px;border:1px solid var(--line);border-radius:3px;background:var(--panel2);
+  padding:3px 5px;cursor:pointer}
+.cell:hover{border-color:#3f3f4a}
+.cell .cid{font:600 9px/1.4 ui-monospace,Menlo,monospace;color:var(--dim)}
+.cell .dots{display:flex;gap:3px;margin-top:2px}
+.cell .dots i{height:4px;flex:1;border-radius:2px}
+
+.todorow{display:flex;gap:10px;padding:7px 12px;border-bottom:1px solid #1d1d24;
+  align-items:baseline;font-size:12px}
+.todorow:last-child{border-bottom:0}
+.todorow .id{font:600 11px ui-monospace,Menlo,monospace;width:78px;flex:none;
+  cursor:pointer}
+.todorow .st{width:46px;flex:none;color:var(--dimmer);font-size:10px;
+  text-transform:uppercase;letter-spacing:.08em}
+.todorow .txt{flex:1;color:#e3c9a8}
+.todorow.empty{color:var(--dimmer)}
+
+table.shots{width:100%;border-collapse:collapse;font-size:12px}
+table.shots th{text-align:left;color:var(--dim);font-weight:600;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;padding:6px 8px;
+  border-bottom:1px solid var(--line);position:sticky;top:44px;background:var(--panel)}
+table.shots td{padding:3px 6px;border-bottom:1px solid #1d1d24;vertical-align:middle}
+table.shots input{width:100%;background:transparent;border:1px solid transparent;
+  border-radius:3px;padding:4px 5px}
+table.shots input:hover{border-color:var(--line)}
+table.shots input:focus{background:#0d0d11;border-color:#3f3f4a;outline:none}
+table.shots td.narrow{width:74px}
+table.shots td.tiny{width:52px}
+textarea.io{width:100%;min-height:150px;background:#0d0d11;border:1px solid var(--line);
+  border-radius:4px;padding:9px;color:var(--dim);font:11px/1.5 ui-monospace,Menlo,monospace}
+.toolrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:11px 12px}
+
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:60;display:none;
+  padding:30px 16px;overflow:auto}
+.scrim.open{display:block}
+.modal{max-width:1000px;margin:0 auto;background:var(--panel);
+  border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.modal .head{display:flex;align-items:center;gap:10px;padding:10px 13px;
+  border-bottom:1px solid var(--line);background:var(--panel2)}
+.modal .body{padding:13px}
+.modal .media{aspect-ratio:auto;max-height:62vh}
+.modal .media img,.modal .media video{max-height:62vh}
+kbd{background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:3px;padding:1px 6px;font:600 11px/1.5 ui-monospace,Menlo,monospace;
+  color:var(--text)}
+.keys{display:grid;grid-template-columns:96px 1fr;gap:7px 12px;font-size:12px;
+  align-items:baseline}
+.keys div:nth-child(even){color:var(--dim)}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:80;
+  background:#000;border:1px solid var(--line);border-radius:4px;padding:8px 14px;
+  font-size:12px;display:none;max-width:80vw}
+.toast.show{display:block}
+.toast.bad{border-color:#5a2b2d;color:#ff9d9d}
+.empty{padding:64px 16px;text-align:center;color:var(--dimmer);line-height:1.9}
+.dropping{outline:2px dashed var(--review);outline-offset:-8px}
+@media (max-width:820px){ .grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))} }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand" id="brand">AYNI</span>
+  <nav>
+    <button data-tab="review" aria-current="true">Review</button>
+    <button data-tab="overview" aria-current="false">Overview</button>
+    <button data-tab="shots" aria-current="false">Shots</button>
+  </nav>
+  <span class="spacer"></span>
+  <span class="saved" id="savedNote">saved locally</span>
+  <button class="btn" id="helpBtn" title="Keyboard help (?)">?</button>
+</header>
+
+<!-- ------------------------------------------------------------- REVIEW -->
+<section class="view active" id="view-review">
+  <div class="filters">
+    <div class="seg" role="group" aria-label="Stage">
+      <button data-stage="still" aria-pressed="true">Stills</button>
+      <button data-stage="clip" aria-pressed="false">Clips</button>
+    </div>
+    <label class="f">Show <select id="fStatus">
+      <option value="review">to review</option>
+      <option value="rework">needs work</option>
+      <option value="approved">approved</option>
+      <option value="todo">not started</option>
+      <option value="open">anything unfinished</option>
+      <option value="all">everything</option>
+    </select></label>
+    <label class="f">Scene <select id="fScene"></select></label>
+    <label class="f">Tier <select id="fTier"></select></label>
+    <input type="search" id="fSearch" placeholder="find…" style="width:150px">
+    <span class="spacer"></span>
+    <span class="count" id="reviewCount"></span>
+  </div>
+  <div class="grid" id="grid"></div>
+</section>
+
+<!-- ----------------------------------------------------------- OVERVIEW -->
+<section class="view" id="view-overview">
+  <div class="wrap">
+    <div class="section">
+      <h2>Stills</h2>
+      <div class="stats" id="stillStats"></div>
+      <div class="bar" id="stillBar"></div>
+    </div>
+    <div class="section">
+      <h2>Clips</h2>
+      <div class="stats" id="clipStats"></div>
+      <div class="bar" id="clipBar"></div>
+      <div class="legend">
+        <span><i style="background:var(--approved)"></i>approved</span>
+        <span><i style="background:var(--review)"></i>to review</span>
+        <span><i style="background:var(--rework)"></i>needs work</span>
+        <span><i style="background:var(--todo)"></i>not started</span>
+      </div>
+    </div>
+    <div class="section">
+      <h2>What is missing
+        <span class="spacer"></span>
+        <button class="btn" id="copyNotes">Copy list for the agent</button>
+      </h2>
+      <div id="todoList"></div>
+    </div>
+    <div class="section">
+      <h2>Scenes</h2>
+      <div class="body" style="overflow-x:auto"><table class="scenes"><tbody id="sceneGrid">
+      </tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- -------------------------------------------------------------- SHOTS -->
+<section class="view" id="view-shots">
+  <div class="wrap">
+    <div class="section">
+      <h2>Shot list
+        <span class="spacer"></span>
+        <button class="btn" id="addShot">Add shot</button>
+      </h2>
+      <div style="overflow-x:auto"><table class="shots"><thead><tr>
+        <th class="tiny">shot</th><th class="tiny">sc</th><th class="tiny">tier</th>
+        <th>description</th><th>still media</th><th>clip media</th><th class="tiny"></th>
+      </tr></thead><tbody id="shotRows"></tbody></table></div>
+    </div>
+
+    <div class="section">
+      <h2>Import</h2>
+      <div class="body">
+        <p class="hint" style="margin:0 0 8px">Paste JSON (a previous export) or CSV
+          with a header row — <span class="mono">shot,scene,tier,description,still,clip</span>.
+          You can also drop a .json or .csv file anywhere on the page.</p>
+        <textarea class="io" id="importBox" placeholder="paste here…"></textarea>
+      </div>
+      <div class="toolrow">
+        <button class="btn go" id="importMerge">Import — merge</button>
+        <button class="btn warn" id="importReplace">Import — replace everything</button>
+        <span class="hint">Merge updates shots with a matching id and adds new ones.
+          Notes and statuses you already have are kept.</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Export</h2>
+      <div class="toolrow">
+        <button class="btn" id="download">Download JSON</button>
+        <button class="btn" id="copyJSON">Copy JSON</button>
+        <button class="btn" id="downloadCSV">Download CSV</button>
+        <span class="spacer"></span>
+        <button class="btn warn" id="clearAll">Clear everything</button>
+      </div>
+      <div class="body"><textarea class="io" id="exportBox" readonly></textarea></div>
+    </div>
+  </div>
+</section>
+
+<div class="scrim" id="scrim"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const KEY = "ayni-shot-panel";
+const VIDEO_EXT = /\.(mp4|webm|mov|m4v)(\?|#|$)/i;
+const STAGES = { still: "still", clip: "clip" };
+const STATUS = ["todo", "review", "approved", "rework"];
+
+/* ------------------------------------------------------------------ state */
+let data = { project: "AYNI", shots: [] };
+const ui = { tab: "review", stage: "still", cursor: 0, editing: null,
+             draft: "", sendToStill: false,
+             filters: { status: "review", scene: "all", tier: "all", search: "" } };
+let rows = [];
+
+function blankStage(){ return { status: "todo", media: "", notes: [] }; }
+
+function normalise(shot){
+  const out = {
+    id: String(shot.id || shot.shot_id || "").trim(),
+    scene: shot.scene === undefined || shot.scene === "" ? null : Number(shot.scene),
+    tier: (shot.tier || "").toString().trim().toUpperCase() || "",
+    description: shot.description || shot.desc || "",
+    still: Object.assign(blankStage(), shot.still || {}),
+    clip: Object.assign(blankStage(), shot.clip || {}),
+  };
+  for (const stage of ["still", "clip"]) {
+    const s = out[stage];
+    s.media = (s.media || "").trim();
+    s.notes = Array.isArray(s.notes) ? s.notes.filter(n => n && n.text) : [];
+    if (!STATUS.includes(s.status)) s.status = "todo";
+    // Media present but never looked at means it is waiting for you.
+    if (s.media && s.status === "todo") s.status = "review";
+    if (!s.media && s.status === "review") s.status = "todo";
+  }
+  if (out.scene === null && /^S(\d+)/i.test(out.id)) out.scene = Number(RegExp.$1);
+  return out;
+}
+
+function load(){
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      data.project = parsed.project || "AYNI";
+      data.shots = (parsed.shots || []).map(normalise);
+    }
+  } catch (err) { /* corrupt storage should not stop the panel opening */ }
+}
+
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(data));
+      stamp("saved locally · " + new Date().toLocaleTimeString());
+    } catch (err) {
+      stamp("could not save — storage full", true);
+    }
+  }, 150);
+}
+
+function stamp(text, bad){
+  const el = $("#savedNote");
+  el.textContent = text;
+  el.style.color = bad ? "#ff9d9d" : "";
+}
+
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g,
+  c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+
+function toast(message, bad){
+  const el = $("#toast");
+  el.textContent = message;
+  el.className = "toast show" + (bad ? " bad" : "");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { el.className = "toast"; }, bad ? 4200 : 2000);
+}
+
+function shotById(id){ return data.shots.find(s => s.id === id); }
+function when(iso){
+  const d = new Date(iso);
+  return isNaN(d) ? "" : d.toLocaleDateString(undefined,
+    { month: "short", day: "numeric" }) + " " +
+    d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
+/* ------------------------------------------------------------------ media */
+/* `poster` is the shot's still, which is the frame the clip was built from — so
+   a clip tile shows something recognisable before it has decoded anything. */
+function mediaTag(src, lazyVideo, poster){
+  if (!src) return '<div class="nomedia">no media yet</div>';
+  const posterAttr = poster && !VIDEO_EXT.test(poster)
+    ? ' poster="' + esc(poster) + '"' : "";
+  if (VIDEO_EXT.test(src)) {
+    return lazyVideo
+      ? '<video data-src="' + esc(src) + '"' + posterAttr +
+        ' muted loop playsinline preload="none"></video>'
+      : '<video src="' + esc(src) + '"' + posterAttr +
+        ' muted loop playsinline autoplay preload="metadata"></video>';
+  }
+  return '<img src="' + esc(src) + '" alt="" loading="lazy" decoding="async">';
+}
+
+/* Clips only decode while they are on screen, and never more than a handful at
+   once — a wall of a hundred autoplaying videos stalls the browser. */
+const PLAYING_LIMIT = 8;
+let observer = null;
+const onScreen = new Set();
+
+function watchClips(){
+  if (observer) observer.disconnect();
+  onScreen.clear();
+  const videos = $$("#grid video[data-src]");
+  if (!videos.length) { observer = null; return; }
+  observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) onScreen.add(entry.target);
+      else { onScreen.delete(entry.target); stopClip(entry.target); }
+    }
+    balanceClips();
+  }, { rootMargin: "250px 0px", threshold: 0.05 });
+  videos.forEach(v => observer.observe(v));
+}
+
+function balanceClips(){
+  if (!onScreen.size) return;
+  const middle = innerHeight / 2;
+  const ranked = Array.from(onScreen).sort((a, b) =>
+    Math.abs(mid(a) - middle) - Math.abs(mid(b) - middle));
+  ranked.slice(0, PLAYING_LIMIT).forEach(startClip);
+  ranked.slice(PLAYING_LIMIT).forEach(stopClip);
+}
+function mid(el){ const r = el.getBoundingClientRect(); return (r.top + r.bottom) / 2; }
+function startClip(v){
+  if (!v.getAttribute("src")) v.setAttribute("src", v.dataset.src);
+  if (v.paused) v.play().catch(() => {});
+}
+function stopClip(v){
+  if (!v.getAttribute("src")) return;
+  v.pause(); v.removeAttribute("src"); v.load();
+}
+
+/* ----------------------------------------------------------------- review */
+function matches(shot){
+  const stage = shot[ui.stage];
+  const f = ui.filters;
+  if (f.status === "open") { if (stage.status === "approved") return false; }
+  else if (f.status !== "all" && stage.status !== f.status) return false;
+  if (f.scene !== "all" && String(shot.scene) !== f.scene) return false;
+  if (f.tier !== "all" && shot.tier !== f.tier) return false;
+  if (f.search) {
+    const hay = (shot.id + " " + shot.description + " " +
+      stage.notes.map(n => n.text).join(" ")).toLowerCase();
+    if (!hay.includes(f.search.toLowerCase())) return false;
+  }
+  return true;
+}
+
+function renderReview(keepCursor){
+  const previous = rows[ui.cursor] && rows[ui.cursor].id;
+  rows = data.shots.filter(matches);
+  rows.sort((a, b) => (a.scene ?? 999) - (b.scene ?? 999) ||
+    a.id.localeCompare(b.id));
+  if (keepCursor && previous) {
+    const index = rows.findIndex(s => s.id === previous);
+    ui.cursor = index >= 0 ? index : Math.min(ui.cursor, rows.length - 1);
+  }
+  if (ui.cursor >= rows.length) ui.cursor = Math.max(0, rows.length - 1);
+
+  const grid = $("#grid");
+  if (!data.shots.length) {
+    grid.innerHTML = '<div class="empty">No shots yet.<br>' +
+      'Add them on the <b>Shots</b> tab — paste a CSV or JSON, or drop a file ' +
+      'anywhere on this page.<br><br>' +
+      '<button class="btn" id="loadExample">Load an example shot list</button></div>';
+    $("#reviewCount").textContent = "";
+    $("#loadExample").onclick = loadExample;
+    watchClips();
+    return;
+  }
+  grid.innerHTML = rows.length
+    ? rows.map((shot, index) => tile(shot, index)).join("")
+    : '<div class="empty">Nothing matches these filters.</div>';
+  const waiting = data.shots.filter(s => s[ui.stage].status === "review").length;
+  $("#reviewCount").textContent = rows.length + " shown · " + waiting +
+    " waiting for you";
+  focusCursor(false);
+  watchClips();
+}
+
+function tile(shot, index){
+  const stage = shot[ui.stage];
+  const editing = ui.editing === shot.id;
+  const notes = stage.notes.slice(-3).map((note, n) =>
+    '<div class="note"><time>' + esc(when(note.at)) + "</time><span>" +
+    esc(note.text) + '</span><button class="x" data-act="delnote" data-note="' +
+    (stage.notes.length - Math.min(3, stage.notes.length) + n) +
+    '" title="remove note">×</button></div>').join("");
+
+  return '<article class="tile' + (index === ui.cursor ? " cursor" : "") +
+    '" data-index="' + index + '" data-id="' + esc(shot.id) + '">' +
+    '<div class="media" data-act="open">' +
+      mediaTag(stage.media, true, shot.still.media) +
+      '<div class="badges"><span class="shotid">' + esc(shot.id) + "</span>" +
+      (shot.tier ? '<span class="tier ' + esc(shot.tier) + '">' + esc(shot.tier) +
+        "</span>" : "") + "</div>" +
+      '<span class="status ' + esc(stage.status) + '">' + label(stage.status) +
+      "</span></div>" +
+    '<div class="meta"><span class="desc" title="' + esc(shot.description) + '">' +
+      esc(shot.description || "—") + "</span>" +
+      (stage.notes.length > 3 ? "<span>" + stage.notes.length + " notes</span>" : "") +
+      "</div>" +
+    (notes ? '<div class="notes">' + notes + "</div>" : "") +
+    (editing ? composer(shot) : actions(shot, stage)) +
+    "</article>";
+}
+
+function label(status){
+  return status === "review" ? "to review"
+    : status === "rework" ? "needs work"
+    : status === "todo" ? "not started" : "approved";
+}
+
+function actions(shot, stage){
+  return '<div class="actions">' +
+    '<button class="go" data-act="approve">Approve <span class="hint">A</span>' +
+    "</button>" +
+    '<button class="warn" data-act="note">Needs work <span class="hint">R</span>' +
+    "</button>" +
+    (stage.status === "approved" || stage.status === "rework"
+      ? '<button data-act="reset">Undecide</button>' : "") +
+    (ui.stage === "clip" && shot.still.media
+      ? '<button data-act="tostill">Fix the still</button>' : "") +
+    '<button data-act="open">Open <span class="hint">O</span></button>' +
+    "</div>";
+}
+
+function composer(shot){
+  const stage = shot[ui.stage];
+  return '<div class="composer"><textarea id="noteBox" placeholder="' +
+    'What is missing or wrong? Plain words — this is what goes back to the agent.' +
+    '">' + esc(ui.draft || "") + "</textarea>" +
+    '<div class="row"><button class="btn warn" data-act="savenote">Save note</button>' +
+    '<button class="btn" data-act="cancelnote">Cancel</button>' +
+    '<span class="hint">Enter saves · Shift+Enter for a new line · Esc cancels' +
+    (ui.stage === "clip" && shot.still.media
+      ? ' · <b>⇧S</b> sends it to the still instead' : "") +
+    "</span></div></div>";
+}
+
+function focusCursor(scroll){
+  $$(".tile").forEach(el => el.classList.toggle("cursor",
+    Number(el.dataset.index) === ui.cursor));
+  if (scroll !== false) {
+    const el = $('.tile[data-index="' + ui.cursor + '"]');
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }
+}
+
+function move(delta){
+  if (!rows.length || ui.editing) return;
+  ui.cursor = Math.max(0, Math.min(rows.length - 1, ui.cursor + delta));
+  focusCursor(true);
+  balanceClips();
+}
+
+function columns(){
+  return Math.max(1, getComputedStyle($("#grid")).gridTemplateColumns.split(" ").length);
+}
+
+/* -------------------------------------------------------------- decisions */
+function setStatus(shot, stage, status){
+  shot[stage].status = status;
+  save();
+}
+
+function approve(){
+  const shot = rows[ui.cursor];
+  if (!shot) return;
+  const stage = shot[ui.stage];
+  if (!stage.media) return toast("no media on this shot yet", true);
+  setStatus(shot, ui.stage, "approved");
+  toast(shot.id + " approved");
+  advance();
+}
+
+function advance(){
+  // Approving out of a filtered list makes the tile leave the list; keeping the
+  // cursor where it is lands you on the next undecided shot.
+  const wasLast = ui.cursor >= rows.length - 1;
+  renderReview(ui.filters.status === "all" || ui.filters.status === "open");
+  if (ui.filters.status === "review" || ui.filters.status === "rework") {
+    if (wasLast) ui.cursor = Math.max(0, rows.length - 1);
+    focusCursor(true);
+  } else {
+    move(1);
+  }
+}
+
+function openNote(){
+  const shot = rows[ui.cursor];
+  if (!shot) return;
+  ui.editing = shot.id;
+  ui.draft = "";
+  renderReview(true);
+  const box = $("#noteBox");
+  if (box) { box.focus(); box.selectionStart = box.value.length; }
+}
+
+function saveNote(target){
+  const shot = shotById(ui.editing);
+  const box = $("#noteBox");
+  if (!shot || !box) return;
+  const text = box.value.trim();
+  if (!text) return cancelNote();
+  const stage = target || ui.stage;
+  shot[stage].notes.push({ at: new Date().toISOString(), text });
+  shot[stage].status = "rework";
+  ui.editing = null;
+  ui.draft = "";
+  save();
+  renderReview(true);
+  toast(shot.id + " — note saved to the " + stage +
+    (stage !== ui.stage ? ", sent upstream" : ""));
+}
+
+function cancelNote(){
+  ui.editing = null;
+  ui.draft = "";
+  renderReview(true);
+}
+
+/* ---------------------------------------------------------------- overview */
+function counts(stage){
+  const out = { todo: 0, review: 0, approved: 0, rework: 0 };
+  data.shots.forEach(shot => out[shot[stage].status]++);
+  return out;
+}
+
+function renderOverview(){
+  for (const [stage, statsId, barId] of
+       [["still", "#stillStats", "#stillBar"], ["clip", "#clipStats", "#clipBar"]]) {
+    const c = counts(stage);
+    const total = data.shots.length || 1;
+    $(statsId).innerHTML =
+      stat(c.approved, "approved") + stat(c.review, "to review") +
+      stat(c.rework, "needs work") + stat(c.todo, "not started") +
+      stat(Math.round(c.approved / total * 100) + "%", "done");
+    $(barId).innerHTML = ["approved", "review", "rework", "todo"].map(key =>
+      '<i style="width:' + (c[key] / total * 100) + "%;background:var(--" +
+      (key === "review" ? "review" : key) + ')"></i>').join("");
+  }
+
+  const open = [];
+  data.shots.forEach(shot => {
+    for (const stage of ["still", "clip"]) {
+      if (shot[stage].status !== "rework") continue;
+      const last = shot[stage].notes[shot[stage].notes.length - 1];
+      open.push({ id: shot.id, stage, text: last ? last.text : "(no note)" });
+    }
+  });
+  $("#todoList").innerHTML = open.length
+    ? open.map(item => '<div class="todorow"><span class="id" data-open="' +
+        esc(item.id) + '" data-stage="' + item.stage + '">' + esc(item.id) +
+        '</span><span class="st">' + item.stage + '</span><span class="txt">' +
+        esc(item.text) + "</span></div>").join("")
+    : '<div class="todorow empty">Nothing is marked as needing work.</div>';
+
+  const scenes = {};
+  data.shots.forEach(shot => {
+    (scenes[shot.scene ?? "—"] = scenes[shot.scene ?? "—"] || []).push(shot);
+  });
+  $("#sceneGrid").innerHTML = Object.keys(scenes).sort((a, b) => a - b).map(scene =>
+    "<tr><th>scene " + esc(scene) + "</th>" + scenes[scene]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map(shot => '<td><div class="cell" data-open="' + esc(shot.id) + '">' +
+        '<span class="cid">' + esc(shot.id.replace(/^S\d+[_-]?/i, "") || shot.id) +
+        (shot.tier ? " " + esc(shot.tier) : "") + "</span>" +
+        '<span class="dots"><i style="background:var(--' + shot.still.status +
+        ')"></i><i style="background:var(--' + shot.clip.status + ')"></i></span>' +
+        "</div></td>").join("") + "</tr>").join("");
+}
+
+function stat(n, l){
+  return '<div class="stat"><div class="n">' + n + '</div><div class="l">' + l +
+    "</div></div>";
+}
+
+function copyNotes(){
+  const lines = [];
+  data.shots.forEach(shot => {
+    for (const stage of ["still", "clip"]) {
+      if (shot[stage].status !== "rework") continue;
+      shot[stage].notes.slice(-1).forEach(note => {
+        lines.push(shot.id + " " + stage + " — " + note.text.replace(/\s+/g, " "));
+      });
+    }
+  });
+  if (!lines.length) return toast("nothing is marked as needing work");
+  copy(lines.join("\n"));
+  toast(lines.length + " note(s) copied");
+}
+
+function copy(text){
+  if (navigator.clipboard && location.protocol !== "file:") {
+    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+  } else fallbackCopy(text);
+}
+function fallbackCopy(text){
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.appendChild(area);
+  area.select();
+  try { document.execCommand("copy"); } catch (err) { /* nothing else to try */ }
+  area.remove();
+}
+
+/* ------------------------------------------------------------------ shots */
+function renderShots(){
+  $("#shotRows").innerHTML = data.shots.map((shot, index) =>
+    "<tr data-index=" + index + ">" +
+    cellInput("id", shot.id, "narrow mono") +
+    cellInput("scene", shot.scene ?? "", "tiny") +
+    cellInput("tier", shot.tier, "tiny") +
+    cellInput("description", shot.description) +
+    cellInput("still.media", shot.still.media) +
+    cellInput("clip.media", shot.clip.media) +
+    '<td class="tiny"><button class="btn" data-del="' + index + '">×</button></td>' +
+    "</tr>").join("");
+  $("#exportBox").value = JSON.stringify(exportable(), null, 2);
+}
+
+function cellInput(field, value, cls){
+  return '<td class="' + (cls || "") + '"><input data-field="' + field +
+    '" value="' + esc(value) + '"></td>';
+}
+
+function exportable(){
+  return { project: data.project, updated: new Date().toISOString(),
+           shots: data.shots };
+}
+
+function download(name, text, type){
+  const blob = new Blob([text], { type: type || "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function toCSV(){
+  const head = ["shot", "scene", "tier", "description", "still", "clip",
+                "still_status", "clip_status", "still_notes", "clip_notes"];
+  const cell = v => {
+    const s = String(v == null ? "" : v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  return [head.join(",")].concat(data.shots.map(shot => [
+    shot.id, shot.scene ?? "", shot.tier, shot.description,
+    shot.still.media, shot.clip.media, shot.still.status, shot.clip.status,
+    shot.still.notes.map(n => n.text).join(" | "),
+    shot.clip.notes.map(n => n.text).join(" | "),
+  ].map(cell).join(","))).join("\n");
+}
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = "", quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (c === '"') quoted = false;
+      else field += c;
+    } else if (c === '"') quoted = true;
+    else if (c === ",") { row.push(field); field = ""; }
+    else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else if (c !== "\r") field += c;
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  if (!rows.length) return [];
+  const head = rows.shift().map(h => h.trim().toLowerCase());
+  const pick = (cells, ...names) => {
+    for (const name of names) {
+      const at = head.indexOf(name);
+      if (at >= 0 && cells[at] !== undefined) return cells[at].trim();
+    }
+    return "";
+  };
+  return rows.filter(cells => cells.some(c => c.trim())).map(cells => ({
+    id: pick(cells, "shot", "shot_id", "id"),
+    scene: pick(cells, "scene", "sc"),
+    tier: pick(cells, "tier"),
+    description: pick(cells, "description", "desc", "action"),
+    still: { media: pick(cells, "still", "still_media", "image", "media") },
+    clip: { media: pick(cells, "clip", "clip_media", "video") },
+  }));
+}
+
+function parseImport(text){
+  text = text.trim();
+  if (!text) return null;
+  if (text[0] === "{" || text[0] === "[") {
+    const parsed = JSON.parse(text);
+    const list = Array.isArray(parsed) ? parsed : (parsed.shots || []);
+    return { project: parsed.project, shots: list };
+  }
+  return { shots: parseCSV(text) };
+}
+
+function doImport(replace){
+  let parsed;
+  try { parsed = parseImport($("#importBox").value); }
+  catch (err) { return toast("could not read that: " + err.message, true); }
+  if (!parsed || !parsed.shots.length) return toast("nothing to import", true);
+
+  const incoming = parsed.shots.map(normalise).filter(s => s.id);
+  if (!incoming.length) return toast("no shots had an id", true);
+  if (parsed.project) data.project = parsed.project;
+
+  if (replace) {
+    if (data.shots.length &&
+        !confirm("Replace all " + data.shots.length + " shots, including notes?")) return;
+    data.shots = incoming;
+  } else {
+    incoming.forEach(shot => {
+      const existing = shotById(shot.id);
+      if (!existing) return data.shots.push(shot);
+      // Merging must never quietly discard a decision or a note.
+      existing.scene = shot.scene ?? existing.scene;
+      existing.tier = shot.tier || existing.tier;
+      existing.description = shot.description || existing.description;
+      for (const stage of ["still", "clip"]) {
+        if (shot[stage].media && shot[stage].media !== existing[stage].media) {
+          existing[stage].media = shot[stage].media;
+          existing[stage].status = "review";   // new media deserves a fresh look
+        }
+        if (shot[stage].notes.length) {
+          existing[stage].notes = existing[stage].notes.concat(shot[stage].notes);
+        }
+      }
+    });
+  }
+  $("#importBox").value = "";
+  save();
+  renderAll();
+  toast(incoming.length + " shot(s) imported");
+}
+
+function loadExample(){
+  const scenes = [[1, "Cold open — the terraces before dawn"],
+                  [2, "Nayra wakes in the stone house"],
+                  [3, "The water channel is dry"]];
+  const shots = [];
+  scenes.forEach(([scene, title]) => {
+    for (let slot = 1; slot <= 4; slot++) {
+      shots.push({
+        id: "S" + String(scene).padStart(2, "0") + "_" + String(slot).padStart(2, "0"),
+        scene, tier: ["A", "B", "B", "C"][slot - 1],
+        description: title + " — shot " + slot,
+        still: { media: "", status: "todo", notes: [] },
+        clip: { media: "", status: "todo", notes: [] },
+      });
+    }
+  });
+  data.shots = shots.map(normalise);
+  save();
+  renderAll();
+  toast("example loaded — put media URLs or file paths on the Shots tab");
+}
+
+/* ------------------------------------------------------------------ modal */
+function openShot(id, stage){
+  const shot = shotById(id);
+  if (!shot) return;
+  stage = stage || ui.stage;
+  const s = shot[stage];
+  $("#modal").innerHTML =
+    '<div class="head"><b class="mono">' + esc(shot.id) + "</b>" +
+    '<span class="count">' + esc(shot.description || "") + "</span>" +
+    '<span class="spacer"></span>' +
+    '<div class="seg"><button data-modal-stage="still" aria-pressed="' +
+      (stage === "still") + '">Still</button><button data-modal-stage="clip" ' +
+      'aria-pressed="' + (stage === "clip") + '">Clip</button></div>' +
+    '<button class="btn" data-act="close">esc</button></div>' +
+    '<div class="body"><div class="media">' +
+      mediaTag(s.media, false, shot.still.media) + "</div>" +
+    '<div class="meta"><span>' + label(s.status) + "</span><span>" +
+      esc(s.media || "no media") + "</span></div>" +
+    (s.notes.length
+      ? '<div class="notes">' + s.notes.map(n =>
+          '<div class="note"><time>' + esc(when(n.at)) + "</time><span>" +
+          esc(n.text) + "</span></div>").join("") + "</div>"
+      : '<p class="count" style="padding:0 9px">No notes on this stage.</p>') +
+    "</div>";
+  $("#modal").dataset.shot = shot.id;
+  $("#modal").dataset.stage = stage;
+  $("#scrim").classList.add("open");
+}
+
+function helpModal(){
+  const row = (k, t) => "<div><kbd>" + k + "</kbd></div><div>" + t + "</div>";
+  $("#modal").innerHTML =
+    '<div class="head"><b>Keyboard</b><span class="spacer"></span>' +
+    '<button class="btn" data-act="close">esc</button></div><div class="body">' +
+    '<div class="keys">' +
+    row("A", "Approve the shot on screen") +
+    row("R", "Needs work — opens the note box") +
+    row("Enter", "Save the note · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line") +
+    row("⇧S", "While writing a note on a clip: save it to the still instead") +
+    row("← → ↑ ↓", "Move between shots") +
+    row("O", "Open the shot large") +
+    row("S", "Switch between stills and clips") +
+    row("Esc", "Close this, or cancel a note") +
+    row("?", "This help") +
+    "</div><p class=\"hint\" style=\"margin-top:14px\">Everything is saved in this " +
+    "browser as you go. Use <b>Shots → Download JSON</b> to keep a copy or move it " +
+    "to another machine.</p></div>";
+  $("#scrim").classList.add("open");
+}
+
+function closeModal(){ $("#scrim").classList.remove("open"); }
+
+/* ------------------------------------------------------------------- tabs */
+function setTab(tab){
+  ui.tab = tab;
+  $$("nav button").forEach(b =>
+    b.setAttribute("aria-current", String(b.dataset.tab === tab)));
+  $$(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + tab));
+  if (tab === "overview") renderOverview();
+  if (tab === "shots") renderShots();
+}
+
+function renderAll(){
+  $("#brand").textContent = data.project || "AYNI";
+  document.title = (data.project || "AYNI") + " — shot panel";
+  fillFilters();
+  renderReview(true);
+  if (ui.tab === "overview") renderOverview();
+  if (ui.tab === "shots") renderShots();
+}
+
+function fillFilters(){
+  const scenes = Array.from(new Set(data.shots.map(s => s.scene)
+    .filter(s => s != null))).sort((a, b) => a - b);
+  const scene = $("#fScene");
+  scene.innerHTML = '<option value="all">all</option>' +
+    scenes.map(s => '<option value="' + s + '">' + s + "</option>").join("");
+  scene.value = scenes.map(String).includes(ui.filters.scene) ? ui.filters.scene : "all";
+  ui.filters.scene = scene.value;
+
+  const tiers = Array.from(new Set(data.shots.map(s => s.tier).filter(Boolean))).sort();
+  const tier = $("#fTier");
+  tier.innerHTML = '<option value="all">all</option>' +
+    tiers.map(t => '<option value="' + t + '">' + t + "</option>").join("");
+  tier.value = tiers.includes(ui.filters.tier) ? ui.filters.tier : "all";
+  ui.filters.tier = tier.value;
+}
+
+/* ------------------------------------------------------------------- wire */
+function wire(){
+  $$("nav button").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+  $("#helpBtn").onclick = helpModal;
+
+  $$(".seg button[data-stage]").forEach(b => b.onclick = () => switchStage(b.dataset.stage));
+  $("#fStatus").onchange = e => { ui.filters.status = e.target.value; ui.cursor = 0; renderReview(); };
+  $("#fScene").onchange = e => { ui.filters.scene = e.target.value; ui.cursor = 0; renderReview(); };
+  $("#fTier").onchange = e => { ui.filters.tier = e.target.value; ui.cursor = 0; renderReview(); };
+  $("#fSearch").oninput = e => { ui.filters.search = e.target.value; ui.cursor = 0; renderReview(); };
+
+  $("#grid").addEventListener("click", event => {
+    const tile = event.target.closest(".tile");
+    if (!tile) return;
+    const index = Number(tile.dataset.index);
+    const button = event.target.closest("[data-act]");
+    if (!ui.editing) { ui.cursor = index; focusCursor(false); }
+    if (!button) return;
+    const act = button.dataset.act;
+    if (act === "approve") approve();
+    else if (act === "note") openNote();
+    else if (act === "savenote") saveNote();
+    else if (act === "cancelnote") cancelNote();
+    else if (act === "reset") { setStatus(rows[index], ui.stage,
+        rows[index][ui.stage].media ? "review" : "todo"); renderReview(true); }
+    else if (act === "tostill") { ui.cursor = index; openNote(); ui.sendToStill = true; }
+    else if (act === "open") openShot(tile.dataset.id);
+    else if (act === "delnote") {
+      const shot = shotById(tile.dataset.id);
+      shot[ui.stage].notes.splice(Number(button.dataset.note), 1);
+      if (!shot[ui.stage].notes.length && shot[ui.stage].status === "rework") {
+        shot[ui.stage].status = shot[ui.stage].media ? "review" : "todo";
+      }
+      save(); renderReview(true);
+    }
+  });
+
+  $("#grid").addEventListener("keydown", event => {
+    if (event.target.id !== "noteBox") return;
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      saveNote(ui.sendToStill ? "still" : null);
+      ui.sendToStill = false;
+    } else if (event.key === "Escape") {
+      event.preventDefault(); ui.sendToStill = false; cancelNote();
+    } else if (event.key === "S" && event.shiftKey && ui.stage === "clip") {
+      event.preventDefault(); saveNote("still");
+    }
+  });
+
+  document.body.addEventListener("click", event => {
+    const opener = event.target.closest("[data-open]");
+    if (opener) openShot(opener.dataset.open, opener.dataset.stage);
+    if (event.target.closest('[data-act="close"]') || event.target.id === "scrim")
+      closeModal();
+    const modalStage = event.target.closest("[data-modal-stage]");
+    if (modalStage) openShot($("#modal").dataset.shot, modalStage.dataset.modalStage);
+  });
+
+  $("#copyNotes").onclick = copyNotes;
+
+  $("#shotRows").addEventListener("input", event => {
+    const input = event.target.closest("input[data-field]");
+    if (!input) return;
+    const shot = data.shots[Number(input.closest("tr").dataset.index)];
+    const field = input.dataset.field;
+    const value = input.value;
+    if (field === "scene") shot.scene = value === "" ? null : Number(value);
+    else if (field === "tier") shot.tier = value.toUpperCase();
+    else if (field.includes(".")) {
+      const [stage] = field.split(".");
+      shot[stage].media = value.trim();
+      if (shot[stage].media && shot[stage].status === "todo") shot[stage].status = "review";
+      if (!shot[stage].media && shot[stage].status === "review") shot[stage].status = "todo";
+    } else shot[field] = value;
+    save();
+  });
+  $("#shotRows").addEventListener("click", event => {
+    const button = event.target.closest("[data-del]");
+    if (!button) return;
+    const index = Number(button.dataset.del);
+    if (!confirm("Delete " + (data.shots[index].id || "this shot") + "?")) return;
+    data.shots.splice(index, 1);
+    save(); renderAll();
+  });
+  $("#addShot").onclick = () => {
+    data.shots.push(normalise({ id: "", description: "" }));
+    save(); renderShots();
+    const inputs = $$("#shotRows input[data-field='id']");
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  };
+
+  $("#importMerge").onclick = () => doImport(false);
+  $("#importReplace").onclick = () => doImport(true);
+  $("#download").onclick = () =>
+    download((data.project || "shots").toLowerCase() + "-shots.json",
+      JSON.stringify(exportable(), null, 2));
+  $("#downloadCSV").onclick = () =>
+    download((data.project || "shots").toLowerCase() + "-shots.csv", toCSV(), "text/csv");
+  $("#copyJSON").onclick = () => {
+    copy(JSON.stringify(exportable(), null, 2));
+    toast("JSON copied");
+  };
+  $("#clearAll").onclick = () => {
+    if (!confirm("Delete every shot and note from this browser? Export first if you " +
+                 "want to keep them.")) return;
+    data = { project: "AYNI", shots: [] };
+    localStorage.removeItem(KEY);
+    renderAll();
+    toast("cleared");
+  };
+
+  // Drop a .json or .csv anywhere to import it.
+  document.addEventListener("dragover", event => {
+    event.preventDefault();
+    document.body.classList.add("dropping");
+  });
+  document.addEventListener("dragleave", event => {
+    if (event.relatedTarget === null) document.body.classList.remove("dropping");
+  });
+  document.addEventListener("drop", event => {
+    event.preventDefault();
+    document.body.classList.remove("dropping");
+    const file = event.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      $("#importBox").value = reader.result;
+      setTab("shots");
+      toast("loaded " + file.name + " — choose merge or replace");
+      $("#importBox").scrollIntoView({ block: "center" });
+    };
+    reader.readAsText(file);
+  });
+
+  addEventListener("scroll", () => {
+    if (scrollTicking) return;
+    scrollTicking = true;
+    requestAnimationFrame(() => { scrollTicking = false; balanceClips(); });
+  }, { passive: true });
+
+  document.addEventListener("keydown", onKey);
+}
+
+let scrollTicking = false;
+
+function switchStage(stage){
+  ui.stage = stage;
+  ui.cursor = 0;
+  ui.editing = null;
+  $$(".seg button[data-stage]").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.stage === stage)));
+  renderReview();
+}
+
+function onKey(event){
+  if (event.key === "Escape") { closeModal(); return; }
+  if ($("#scrim").classList.contains("open")) return;
+  if (event.target.matches("input, select, textarea")) return;
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.key === "?") { event.preventDefault(); return helpModal(); }
+  if (ui.tab !== "review") return;
+
+  switch (event.key) {
+    case "ArrowRight": event.preventDefault(); return move(1);
+    case "ArrowLeft": event.preventDefault(); return move(-1);
+    case "ArrowDown": event.preventDefault(); return move(columns());
+    case "ArrowUp": event.preventDefault(); return move(-columns());
+    case "a": case "A": event.preventDefault(); return approve();
+    case "r": case "R": event.preventDefault(); return openNote();
+    case "o": case "O": {
+      event.preventDefault();
+      const shot = rows[ui.cursor];
+      return shot ? openShot(shot.id) : null;
+    }
+    case "s": case "S":
+      event.preventDefault();
+      return switchStage(ui.stage === "still" ? "clip" : "still");
+  }
+}
+
+load();
+wire();
+renderAll();
+</script>
+</body>
+</html>
